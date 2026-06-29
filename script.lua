@@ -1,125 +1,102 @@
---[[ 
- SLAP TOWER ONLINE SCRIPT
- Hitbox Near Only + Key System
- Client-side
-]]
-
--- ===== KEY SYSTEM =====
-local CORRECT_KEY = "VU-SLAP-2025"
-
-local Players = game:GetService("Players")
-local LP = Players.LocalPlayer
-
-local function askKey()
-	local gui = Instance.new("ScreenGui", game.CoreGui)
-	gui.Name = "KEY_GUI"
-
-	local frame = Instance.new("Frame", gui)
-	frame.Size = UDim2.fromScale(0.35,0.25)
-	frame.Position = UDim2.fromScale(0.325,0.35)
-	frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-	frame.Active = true
-	frame.Draggable = true
-
-	local title = Instance.new("TextLabel", frame)
-	title.Size = UDim2.fromScale(1,0.3)
-	title.Text = "🔐 ENTER KEY"
-	title.TextScaled = true
-	title.TextColor3 = Color3.new(1,1,1)
-	title.BackgroundTransparency = 1
-
-	local box = Instance.new("TextBox", frame)
-	box.Size = UDim2.fromScale(0.9,0.25)
-	box.Position = UDim2.fromScale(0.05,0.35)
-	box.PlaceholderText = "Nhập key..."
-	box.TextScaled = true
-	box.BackgroundColor3 = Color3.fromRGB(40,40,40)
-	box.TextColor3 = Color3.new(1,1,1)
-
-	local btn = Instance.new("TextButton", frame)
-	btn.Size = UDim2.fromScale(0.6,0.22)
-	btn.Position = UDim2.fromScale(0.2,0.68)
-	btn.Text = "VERIFY"
-	btn.TextScaled = true
-	btn.BackgroundColor3 = Color3.fromRGB(40,120,40)
-	btn.TextColor3 = Color3.new(1,1,1)
-
-	local unlocked = false
-
-	btn.MouseButton1Click:Connect(function()
-		if box.Text == CORRECT_KEY then
-			unlocked = true
-			gui:Destroy()
-		else
-			box.Text = ""
-			box.PlaceholderText = "SAI KEY"
-		end
-	end)
-
-	repeat task.wait() until unlocked
+-- [[ ADVANCED ANTI-BAN & MEMORY PROTECTOR v3.0 ]] --
+if not hookmetamethod then 
+    return warn("[LỖI] Executor của bạn không hỗ trợ hookmetamethod! Không thể chạy Anti-Ban.") 
 end
 
-askKey()
+-- ==========================================
+-- TẠO CHỮ HIỂN THỊ CHÍNH GIỮA MÀN HÌNH
+-- ==========================================
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
 
--- ===== HITBOX SETTINGS =====
-local HITBOX_ON = false
-local HITBOX_SIZE = 10
-local RANGE = 18
-local NORMAL_SIZE = Vector3.new(2,2,1)
-
-local function HRP(char)
-	return char and char:FindFirstChild("HumanoidRootPart")
+-- Xóa thông báo cũ nếu có để tránh trùng lặp
+if CoreGui:FindFirstChild("AntiBanNotification") then
+    CoreGui.AntiBanNotification:Destroy()
 end
 
--- ===== HITBOX LOGIC =====
-task.spawn(function()
-	while true do
-		if HITBOX_ON and LP.Character then
-			local myHRP = HRP(LP.Character)
-			if myHRP then
-				for _,plr in ipairs(Players:GetPlayers()) do
-					if plr ~= LP and plr.Character then
-						local hrp = HRP(plr.Character)
-						if hrp then
-							local dist = (myHRP.Position - hrp.Position).Magnitude
-							if dist <= RANGE then
-								hrp.Size = Vector3.new(HITBOX_SIZE, HITBOX_SIZE, HITBOX_SIZE)
-								hrp.Transparency = 0.6
-								hrp.Material = Enum.Material.Neon
-								hrp.BrickColor = BrickColor.new("Really red")
-								hrp.CanCollide = false
-							else
-								hrp.Size = NORMAL_SIZE
-								hrp.Transparency = 1
-								hrp.Material = Enum.Material.Plastic
-							end
-						end
-					end
-				end
-			end
-		end
-		task.wait(0.4)
-	end
+-- Tạo giao diện (UI)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AntiBanNotification"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui
+
+local TextLabel = Instance.new("TextLabel")
+TextLabel.Size = UDim2.new(0, 300, 0, 30)
+TextLabel.Position = UDim2.new(0.5, -150, 0.5, -15) -- Căn chính giữa màn hình
+TextLabel.BackgroundTransparency = 1 -- Ẩn nền, chỉ hiện chữ
+TextLabel.Text = "Anti-Ban: Đã Bật"
+TextLabel.TextColor3 = Color3.fromRGB(0, 255, 127) -- Màu xanh lá neon nổi bật
+TextLabel.Font = Enum.Font.SourceSansBold
+TextLabel.TextSize = 20
+TextLabel.TextStrokeTransparency = 0.5 -- Viền chữ đen giúp dễ đọc hơn
+TextLabel.TextTransparency = 1 -- Bắt đầu bằng ẩn để làm hiệu ứng hiện lên
+TextLabel.Parent = ScreenGui
+
+-- Hiệu ứng chữ hiện hình mượt mà (Fade In)
+TweenService:Create(TextLabel, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+
+-- Chờ 3 giây rồi chữ sẽ mờ dần và tự xóa (Fade Out)
+task.delay(3, function()
+    local fadeOut = TweenService:Create(TextLabel, TweenInfo.new(0.5), {TextTransparency = 1})
+    fadeOut:Play()
+    fadeOut.Completed:Connect(function()
+        ScreenGui:Destroy()
+    end)
 end)
 
--- ===== GUI TOGGLE =====
-local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "HITBOX_MAIN_GUI"
+-- ==========================================
+-- HỆ THỐNG PHÒNG THỦ ANTI-BAN (CORE)
+-- ==========================================
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local BlacklistedRemotes = {"report", "cheat", "exploit", "kick", "ban", "anticheat", "log", "detection", "crash"}
 
-local btn = Instance.new("TextButton", gui)
-btn.Size = UDim2.fromScale(0.28,0.08)
-btn.Position = UDim2.fromScale(0.02,0.45)
-btn.Text = "🎯 HITBOX NEAR OFF"
-btn.TextScaled = true
-btn.BackgroundColor3 = Color3.fromRGB(140,40,40)
-btn.TextColor3 = Color3.new(1,1,1)
-btn.Active = true
-btn.Draggable = true
+-- Hook kiểm tra chỉ số bộ nhớ (Anti-Memory Scan)
+local IndexHook
+IndexHook = hookmetamethod(game, "__index", function(Self, Key)
+    if not checkcaller() and Self:IsA("Humanoid") then
+        if Key == "WalkSpeed" then return 16 end
+        if Key == "JumpPower" then return 50 end
+        if Key == "HipHeight" then return 0 end
+    end
+    return IndexHook(Self, Key)
+end)
 
-btn.MouseButton1Click:Connect(function()
-	HITBOX_ON = not HITBOX_ON
-	btn.Text = HITBOX_ON and "🎯 HITBOX NEAR ON" or "🎯 HITBOX NEAR OFF"
-	btn.BackgroundColor3 = HITBOX_ON
-		and Color3.fromRGB(40,170,40)
-		or Color3.fromRGB(140,40,40)
+-- Hook ngăn chặn các lệnh trục xuất và báo cáo (Anti-Kick/Report)
+local NamecallHook
+NamecallHook = hookmetamethod(game, "__namecall", function(Self, ...)
+    local Args = {...}
+    local Method = getnamecallmethod()
+    
+    if not checkcaller() then
+        if Method == "Kick" and Self == LocalPlayer then
+            print("[Anti-Ban] Đã chặn một yêu cầu KICK từ Server!")
+            return nilend
+        if Method == "FireServer" or Method == "InvokeServer" then
+            local RemoteName = tostring(Self):lower()
+            for _, Keyword in ipairs(BlacklistedRemotes) do
+                if RemoteName:find(Keyword) then
+                    warn("[Anti-Ban] Đã chặn đứng Remote gửi báo cáo: " .. tostring(Self))
+                    return nil
+                end
+            end
+        end
+    end
+    return NamecallHook(Self, ...)
+end)
+
+-- Anti-Screenshot & Anti-Log
+if setfflag then
+    pcall(function()
+        setfflag("RobloxScreenShotQuality", "0")
+        setfflag("EnableScreenshotUpload", "false")
+    end)
+end
+
+local LogService = game:GetService("LogService")
+local ScriptContext = game:GetService("ScriptContext")
+LogService.MessageReceived:Connect(function(Message, MessageType)
+    if MessageType == Enum.MessageType.MessageError then
+        pcall(function() ScriptContext:ClearAllErrorLogs() end)
+    end
 end)
